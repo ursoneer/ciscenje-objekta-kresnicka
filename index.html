@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delitev stroškov čiščenja</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EDEAE1;
+    --paper-2: #F6F4EE;
+    --ink: #26241F;
+    --ink-soft: #6B6659;
+    --line: #D9D3C4;
+    --teal: #2F5C5A;
+    --teal-deep: #1F413F;
+    --rust: #A45A31;
+    --card: #FFFFFF;
+    --shadow: 0 1px 0 rgba(38,36,31,0.06);
+    --radius: 10px;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  }
+  :root:not([data-theme="light"]) {
+    /* fallback matches light unless system says dark */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1B1A17;
+      --paper-2: #211F1B;
+      --ink: #EDE9DE;
+      --ink-soft: #A69E8C;
+      --line: #3A362D;
+      --teal: #6FA6A2;
+      --teal-deep: #8CC0BC;
+      --rust: #D3854F;
+      --card: #242220;
+      --shadow: 0 1px 0 rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1B1A17;
+    --paper-2: #211F1B;
+    --ink: #EDE9DE;
+    --ink-soft: #A69E8C;
+    --line: #3A362D;
+    --teal: #6FA6A2;
+    --teal-deep: #8CC0BC;
+    --rust: #D3854F;
+    --card: #242220;
+    --shadow: 0 1px 0 rgba(0,0,0,0.3);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 32px 18px 60px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  header.page { margin-bottom: 28px; }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    letter-spacing: 0.02em;
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: clamp(28px, 5vw, 38px);
+    line-height: 1.15;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height: 1.55;
+    max-width: 56ch;
+    margin: 0;
+  }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+
+  .cost-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 20px 22px;
+    margin-bottom: 18px;
+  }
+  .cost-label {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+  }
+  .cost-label strong { display: block; color: var(--ink); font-size: 16px; font-weight: 500; margin-top: 2px; }
+  .cost-input-group { display: flex; align-items: baseline; gap: 8px; }
+  .cost-input-group input {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 24px;
+    font-weight: 600;
+    width: 140px;
+    text-align: right;
+    border: none;
+    border-bottom: 2px solid var(--teal);
+    background: transparent;
+    color: var(--ink);
+    padding: 2px 2px 4px;
+  }
+  .cost-input-group input:focus { outline: none; border-color: var(--rust); }
+  .cost-input-group .cur { font-size: 18px; color: var(--ink-soft); }
+
+  .board { overflow-x: auto; border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; min-width: 560px; }
+  thead th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  thead th.num, td.num { text-align: center; }
+  thead th.money, td.money { text-align: right; }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    font-size: 14.5px;
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--paper-2); }
+
+  @media (max-width: 640px) {
+    .board { overflow-x: visible; }
+    table { min-width: 0; width: 100%; }
+    thead { display: none; }
+    tbody tr {
+      display: block;
+      border-bottom: 1px solid var(--line);
+      padding: 12px 4px;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: none;
+      padding: 5px 10px;
+    }
+    tbody td[data-label]::before {
+      content: attr(data-label);
+      font-size: 12px;
+      color: var(--ink-soft);
+    }
+    tbody td:first-child {
+      padding-bottom: 8px;
+    }
+    tbody td:first-child input.label-input {
+      font-weight: 500;
+      font-size: 15.5px;
+    }
+    .share { font-size: 16px; }
+  }
+
+  input.label-input {
+    font-family: inherit;
+    font-size: 14.5px;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    padding: 3px 2px;
+    width: 100%;
+    min-width: 110px;
+  }
+  input.label-input:hover, input.label-input:focus { border-bottom-color: var(--line); outline: none; }
+
+  input.num-input {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14.5px;
+    text-align: center;
+    width: 52px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--paper-2);
+    color: var(--ink);
+    padding: 5px 4px;
+  }
+  input.num-input:focus { outline: none; border-color: var(--teal); }
+
+  .units { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); font-size: 14px; }
+  .share { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 15px; color: var(--teal-deep); }
+
+  tfoot td {
+    padding: 14px;
+    font-size: 13.5px;
+    border-top: 1px solid var(--line);
+    background: var(--paper-2);
+  }
+  tfoot tr:first-child td { border-top: 2px solid var(--ink); }
+  .foot-label { color: var(--ink-soft); }
+  .foot-total { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 16px; }
+
+  .legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    padding: 14px 4px 0;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .legend b { color: var(--ink); font-weight: 500; }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 22px;
+    flex-wrap: wrap;
+  }
+  button.save {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+    font-size: 14.5px;
+    background: var(--teal-deep);
+    color: var(--paper-2);
+    border: none;
+    border-radius: 8px;
+    padding: 11px 20px;
+    cursor: pointer;
+  }
+  button.save:hover { background: var(--teal); }
+  button.save:active { transform: translateY(1px); }
+  button.add {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13.5px;
+    background: transparent;
+    color: var(--teal-deep);
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+  }
+  button.add:hover { border-color: var(--teal); }
+
+  .status { font-size: 13px; color: var(--ink-soft); min-height: 18px; }
+  .status.ok { color: var(--teal-deep); }
+  .status.err { color: var(--rust); }
+
+  footer.note {
+    margin-top: 30px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+  }
+
+  /* --- mobile card layout (replaces the table on narrow screens) --- */
+  .cards { display: none; }
+  .card-row {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .card-row:last-child { border-bottom: none; }
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .card-top input.label-input { font-size: 15.5px; font-weight: 500; flex: 1; min-width: 0; }
+  .card-top .share { white-space: nowrap; font-size: 16px; }
+  .card-bottom {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .card-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .card-field input.num-input { width: 56px; }
+  .card-units { margin-left: auto; font-size: 13px; color: var(--ink-soft); }
+  .card-units .units { font-size: 13px; }
+
+  .cards-summary { display: none; padding: 14px 16px; border-top: 2px solid var(--ink); background: var(--paper-2); }
+  .cs-row { display: flex; justify-content: space-between; font-size: 13.5px; padding: 3px 0; color: var(--ink-soft); }
+  .cs-row b { color: var(--ink); font-weight: 500; font-family: 'IBM Plex Mono', monospace; }
+  .cs-row.total { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 15px; }
+  .cs-row.total b { font-size: 17px; font-weight: 600; color: var(--teal-deep); }
+  .cs-price { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-soft); }
+
+  @media (max-width: 640px) {
+    .board { display: none; }
+    .cards { display: block; }
+    .cards-summary { display: block; }
+  }
+
+  /* --- payment tracking --- */
+  .pay-section { margin-top: 24px; }
+  .pay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 18px 22px 4px;
+  }
+  .pay-header h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 19px;
+    margin: 0;
+  }
+  .pay-header .month { font-size: 13px; color: var(--ink-soft); }
+  select.period-select {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    background: var(--paper-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  select.period-select:focus { outline: none; border-color: var(--teal); }
+  .period-note {
+    margin: 0 22px 10px;
+    font-size: 12px;
+    color: var(--rust);
+    display: none;
+  }
+  .period-note.show { display: block; }
+  button.collector-toggle {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12.5px;
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  button.collector-toggle.active { color: var(--teal-deep); border-color: var(--teal); }
+
+  .pay-banner {
+    margin: 14px 22px;
+    padding: 12px 14px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+
+  .pay-rows { padding: 6px 22px 20px; }
+  .pay-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .pay-row:last-child { border-bottom: none; }
+  .pay-name { font-size: 14.5px; min-width: 120px; }
+  .pay-right { display: flex; align-items: center; gap: 10px; }
+  .chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .chip.unpaid { background: var(--paper-2); color: var(--ink-soft); border: 1px solid var(--line); }
+  .chip.claimed { background: #F0DFC4; color: #6B4E17; }
+  @media (prefers-color-scheme: dark) { .chip.claimed { background: #4A3E1E; color: #E7C077; } }
+  :root[data-theme="dark"] .chip.claimed { background: #4A3E1E; color: #E7C077; }
+  .chip.confirmed { background: #DCEAE2; color: var(--teal-deep); }
+  @media (prefers-color-scheme: dark) { .chip.confirmed { background: #1E3A32; } }
+  :root[data-theme="dark"] .chip.confirmed { background: #1E3A32; }
+
+  button.pay-btn {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12.5px;
+    font-weight: 500;
+    background: var(--teal-deep);
+    color: var(--paper-2);
+    border: none;
+    border-radius: 7px;
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  button.pay-btn.confirm { background: var(--rust); }
+  button.pay-btn:disabled { opacity: 0.4; cursor: default; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="eyebrow">SKUPNI PROSTORI · 8 STANOVANJ</p>
+    <h1>Delitev stroškov čiščenja</h1>
+    <p class="sub">Vpiši skupni znesek za čiščenje in število oseb ter psov po stanovanjih (pes šteje kot 0,5 osebe). Znesek za vsako stanovanje se izračuna sproti.</p>
+  </header>
+
+  <div class="panel cost-row">
+    <div class="cost-label">Skupni strošek čiščenja<strong id="period-label">za ta mesec</strong></div>
+    <div class="cost-input-group">
+      <input type="number" id="totalCost" step="0.01" min="0" inputmode="decimal">
+      <span class="cur">€</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="board">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:34%">Stanovanje</th>
+            <th class="num">Osebe</th>
+            <th class="num">Psi</th>
+            <th class="num">Enote</th>
+            <th class="money">Plača</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+        <tfoot>
+          <tr>
+            <td class="foot-label">Skupaj</td>
+            <td class="num foot-total" id="sumPeople"></td>
+            <td class="num foot-total" id="sumDogs"></td>
+            <td class="num foot-total" id="sumUnits"></td>
+            <td class="money foot-total" id="sumShare"></td>
+          </tr>
+          <tr>
+            <td colspan="5" class="foot-label" id="priceLine"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div class="cards-summary" id="cardsSummary">
+      <div class="cs-row"><span>Skupaj oseb / psov</span><b id="mSumPeopleDogs"></b></div>
+      <div class="cs-row"><span>Skupaj enot</span><b id="mSumUnits"></b></div>
+      <div class="cs-row total"><span>Skupaj za plačilo</span><b id="mSumShare"></b></div>
+      <p class="cs-price" id="mPriceLine"></p>
+    </div>
+    <div class="legend"><span><b>Enota</b> = osebe + 0,5 × psi</span><span><b>Plača</b> = enote stanovanja × cena na enoto</span></div>
+  </div>
+
+  <div class="panel pay-section">
+    <div class="pay-header">
+      <h2>Evidenca plačil</h2>
+      <select class="period-select" id="periodSelect"></select>
+      <button class="collector-toggle" id="collectorBtn">Odkleni za prejemnika plačil</button>
+    </div>
+    <p class="period-note" id="periodNote">To ni tekoče obdobje — uredi ga, če kdo plačuje z zamudo.</p>
+    <div class="pay-banner" id="payBanner" style="display:none;"></div>
+    <div class="pay-rows" id="payRows"></div>
+  </div>
+
+  <div class="actions">
+    <button class="save" id="copyBtn">Kopiraj za Discord</button>
+    <button class="save" id="downloadBtn" style="background:transparent;color:var(--teal-deep);border:1px solid var(--line);">Prenesi posodobljeno datoteko</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div class="panel" id="previewPanel" style="display:none; margin-top:14px; padding:16px 18px;">
+    <p style="margin:0 0 8px; font-size:12.5px; color:var(--ink-soft);">Predogled besedila (kopirano v odložišče — če se kopiranje ni sprožilo samodejno, izberi in kopiraj ročno):</p>
+    <textarea id="previewText" readonly style="width:100%; min-height:220px; font-family:'IBM Plex Mono',monospace; font-size:13px; line-height:1.5; background:var(--paper-2); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:12px; resize:vertical;"></textarea>
+  </div>
+
+  <footer class="note">
+    Spremembe vnašaš sproti, izračun se posodablja takoj. Ko si zadovoljen s številkami, klikni »Prenesi posodobljeno datoteko« — dobiš novo .html datoteko s temi podatki že vgrajenimi kot privzetimi, ki jo pošlješ naprej. Naslednjič, ko boš kaj spreminjal, izhajaj iz te zadnje prenesene datoteke.
+  </footer>
+
+</div>
+
+<script id="app-state" type="application/json">{"totalCost":90,"periodLabel":"za ta mesec","apartments":[{"label":"Stanovanje 1","people":4,"dogs":0},{"label":"Stanovanje 2","people":2,"dogs":0},{"label":"Stanovanje 3","people":3,"dogs":0},{"label":"Stanovanje 4","people":4,"dogs":0},{"label":"Stanovanje 5","people":4,"dogs":0},{"label":"Stanovanje 6","people":1,"dogs":0},{"label":"Stanovanje 7","people":2,"dogs":0},{"label":"Stanovanje 8","people":4,"dogs":0}]}</script>
+
+<!--
+  EVIDENCA PLAČIL — nastavitev (enkratno):
+
+  1. Ustvari brezplačen projekt na https://console.firebase.google.com
+  2. V projektu odpri "Firestore Database" -> "Create database" -> začni v test mode.
+  3. V nastavitvah projekta (zobnik zgoraj levo -> Project settings) dodaj "Web app" in
+     prekopiraj objekt firebaseConfig spodaj čez FIREBASE_CONFIG_PLACEHOLDER.
+
+  4. V Firestore -> Rules prilepi TOLE (PIN-e preveri baza sama, ne stran).
+     Obračunsko obdobje se izračuna samodejno iz koledarja (okoli 10. v mesecu se
+     privzeto obdobje samo premakne na naslednji mesec) — ni ga treba ročno "odpirati".
+     Spustni seznam na strani vedno ponuja tudi zadnje 3-4 mesece nazaj, tako da lahko
+     kdorkoli vnese zamudno plačilo za star, že "zaprt" mesec, brez posebnega dovoljenja:
+
+       rules_version = '2';
+       service cloud.firestore {
+         match /databases/{database}/documents {
+
+           // Nihče ne more nikoli prebrati ali neposredno spremeniti shranjenih PIN hashev.
+           match /pins/{pinId} {
+             allow read, write: if false;
+           }
+
+           // Status plačil je javno berljiv, pisanje pa dovoljeno samo, če poslani
+           // "verifyHash" ustreza hashu, shranjenemu v /pins/{apartmentIndex} (za prijavo
+           // "plačano") oz. /pins/collector (za "potrjeno").
+           match /payments/{docId} {
+             allow read: if true;
+             allow write: if
+               (
+                 request.resource.data.verifyHash is string &&
+                 (
+                   ( !('confirmed' in request.resource.data) &&
+                     request.resource.data.verifyHash ==
+                       get(/databases/$(database)/documents/pins/$(docId.split('_')[1])).data.hash )
+                   ||
+                   ( request.resource.data.confirmed == true &&
+                     request.resource.data.verifyHash ==
+                       get(/databases/$(database)/documents/pins/collector).data.hash )
+                 )
+               )
+               ||
+               // kdor koli sme takoj po zapisu odstraniti verifyHash iz dokumenta —
+               // to samo skrajša čas, ko je hash sploh viden, ne razkrije ničesar novega.
+               (
+                 !('verifyHash' in request.resource.data) &&
+                 request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verifyHash'])
+               );
+           }
+         }
+       }
+
+  5. Izberi PIN kodo za vsako stanovanje (0-7) in za prejemnika plačil — priporočam daljšo,
+     ne zgolj 4 številke (npr. "hisa-marec-17"), ker je krajše kode lažje uganiti iz hasha.
+     Za vsako kodo izračunaj njen SHA-256 hash: odpri svojo objavljeno stran, pritisni F12
+     (Developer Tools) -> zavihek "Console", prilepi spodnjo vrstico (zamenjaj TVOJA_KODA)
+     in pritisni Enter:
+
+       crypto.subtle.digest('SHA-256', new TextEncoder().encode('TVOJA_KODA')).then(b=>
+         console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')))
+
+     Dobljen niz (hash) ročno vpiši v Firestore konzoli, v zbirko "pins":
+       - dokument z ID "0" (za Stanovanje 1), polje: hash = <dobljen niz>
+       - dokument z ID "1" (za Stanovanje 2), ... vse do "7" (Stanovanje 8)
+       - dokument z ID "collector", polje: hash = <hash kode prejemnika plačil>
+
+     Ta korak ponoviš samo, če boš kdaj želel PIN spremeniti.
+-->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+(function(){
+  const stateEl = document.getElementById('app-state');
+  let state;
+  try { state = JSON.parse(stateEl.textContent); }
+  catch(e) { state = {totalCost:0, periodLabel:"za ta mesec", apartments:[]}; }
+
+  const fmtEUR = (n) => n.toLocaleString('sl-SI', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+  const fmtNum = (n) => n.toLocaleString('sl-SI', {minimumFractionDigits:1, maximumFractionDigits:1});
+
+  const rowsEl = document.getElementById('rows');
+  const cardsEl = document.getElementById('cards');
+  const totalCostEl = document.getElementById('totalCost');
+  const periodLabelEl = document.getElementById('period-label');
+  const statusEl = document.getElementById('status');
+
+  totalCostEl.value = state.totalCost;
+  periodLabelEl.textContent = state.periodLabel || 'za ta mesec';
+
+  function computeShares() {
+    const units = state.apartments.map(a => (Number(a.people)||0) + 0.5*(Number(a.dogs)||0));
+    const totalUnits = units.reduce((s,u)=>s+u,0);
+    const pricePerUnit = totalUnits > 0 ? (Number(state.totalCost)||0) / totalUnits : 0;
+    let shares = units.map(u => Math.floor(u * pricePerUnit * 100) / 100);
+    const distributed = shares.reduce((s,v)=>s+v,0);
+    let remainder = Math.round(((Number(state.totalCost)||0) - distributed) * 100);
+    // hand out leftover cents to apartments with the largest units, so the total matches exactly
+    const order = units.map((u,i)=>({u,i})).sort((a,b)=>b.u-a.u).map(o=>o.i);
+    let oi = 0;
+    while (remainder > 0 && units.length > 0) {
+      shares[order[oi % order.length]] += 0.01;
+      remainder -= 1; oi += 1;
+    }
+    return { units, totalUnits, pricePerUnit, shares };
+  }
+
+  function render() {
+    rowsEl.innerHTML = '';
+    cardsEl.innerHTML = '';
+    const { units, totalUnits, pricePerUnit, shares } = computeShares();
+
+    state.apartments.forEach((apt, i) => {
+      // --- desktop table row ---
+      const tr = document.createElement('tr');
+
+      const tdLabel = document.createElement('td');
+      const labelInput = document.createElement('input');
+      labelInput.className = 'label-input';
+      labelInput.value = apt.label;
+      labelInput.addEventListener('input', () => { apt.label = labelInput.value; syncLabel(i, labelInput.value); });
+      tdLabel.appendChild(labelInput);
+
+      const tdPeople = document.createElement('td');
+      tdPeople.className = 'num';
+      tdPeople.setAttribute('data-label', 'Osebe');
+      const peopleInput = document.createElement('input');
+      peopleInput.className = 'num-input';
+      peopleInput.type = 'number'; peopleInput.min = '0'; peopleInput.step = '1';
+      peopleInput.value = apt.people;
+      peopleInput.addEventListener('input', () => { apt.people = peopleInput.value === '' ? 0 : Number(peopleInput.value); render(); });
+      tdPeople.appendChild(peopleInput);
+
+      const tdDogs = document.createElement('td');
+      tdDogs.className = 'num';
+      tdDogs.setAttribute('data-label', 'Psi');
+      const dogsInput = document.createElement('input');
+      dogsInput.className = 'num-input';
+      dogsInput.type = 'number'; dogsInput.min = '0'; dogsInput.step = '1';
+      dogsInput.value = apt.dogs;
+      dogsInput.addEventListener('input', () => { apt.dogs = dogsInput.value === '' ? 0 : Number(dogsInput.value); render(); });
+      tdDogs.appendChild(dogsInput);
+
+      const tdUnits = document.createElement('td');
+      tdUnits.className = 'num units';
+      tdUnits.setAttribute('data-label', 'Enote');
+      tdUnits.textContent = fmtNum(units[i]);
+
+      const tdShare = document.createElement('td');
+      tdShare.className = 'money share';
+      tdShare.setAttribute('data-label', 'Plača');
+      tdShare.textContent = fmtEUR(shares[i]);
+
+      tr.appendChild(tdLabel); tr.appendChild(tdPeople); tr.appendChild(tdDogs); tr.appendChild(tdUnits); tr.appendChild(tdShare);
+      rowsEl.appendChild(tr);
+
+      // --- mobile card ---
+      const card = document.createElement('div');
+      card.className = 'card-row';
+
+      const cardTop = document.createElement('div');
+      cardTop.className = 'card-top';
+      const cLabelInput = document.createElement('input');
+      cLabelInput.className = 'label-input';
+      cLabelInput.value = apt.label;
+      cLabelInput.addEventListener('input', () => { apt.label = cLabelInput.value; syncLabel(i, cLabelInput.value); });
+      const cShare = document.createElement('span');
+      cShare.className = 'share';
+      cShare.textContent = fmtEUR(shares[i]);
+      cardTop.appendChild(cLabelInput);
+      cardTop.appendChild(cShare);
+
+      const cardBottom = document.createElement('div');
+      cardBottom.className = 'card-bottom';
+
+      const fPeople = document.createElement('label');
+      fPeople.className = 'card-field';
+      const cPeopleInput = document.createElement('input');
+      cPeopleInput.className = 'num-input';
+      cPeopleInput.type = 'number'; cPeopleInput.min = '0'; cPeopleInput.step = '1';
+      cPeopleInput.value = apt.people;
+      cPeopleInput.addEventListener('input', () => { apt.people = cPeopleInput.value === '' ? 0 : Number(cPeopleInput.value); render(); });
+      fPeople.appendChild(document.createTextNode('Osebe '));
+      fPeople.appendChild(cPeopleInput);
+
+      const fDogs = document.createElement('label');
+      fDogs.className = 'card-field';
+      const cDogsInput = document.createElement('input');
+      cDogsInput.className = 'num-input';
+      cDogsInput.type = 'number'; cDogsInput.min = '0'; cDogsInput.step = '1';
+      cDogsInput.value = apt.dogs;
+      cDogsInput.addEventListener('input', () => { apt.dogs = cDogsInput.value === '' ? 0 : Number(cDogsInput.value); render(); });
+      fDogs.appendChild(document.createTextNode('Psi '));
+      fDogs.appendChild(cDogsInput);
+
+      const cUnits = document.createElement('span');
+      cUnits.className = 'card-units units';
+      cUnits.textContent = fmtNum(units[i]) + ' enot';
+
+      cardBottom.appendChild(fPeople);
+      cardBottom.appendChild(fDogs);
+      cardBottom.appendChild(cUnits);
+
+      card.appendChild(cardTop);
+      card.appendChild(cardBottom);
+      cardsEl.appendChild(card);
+    });
+
+    function syncLabel(i, value) {
+      // keep the desktop and mobile label inputs for the same apartment in sync without a full re-render
+      const tableInput = rowsEl.children[i] && rowsEl.children[i].querySelector('.label-input');
+      const cardInput = cardsEl.children[i] && cardsEl.children[i].querySelector('.label-input');
+      if (tableInput && tableInput.value !== value) tableInput.value = value;
+      if (cardInput && cardInput.value !== value) cardInput.value = value;
+    }
+
+    const sumPeople = state.apartments.reduce((s,a)=>s+(Number(a.people)||0),0);
+    const sumDogs = state.apartments.reduce((s,a)=>s+(Number(a.dogs)||0),0);
+    const totalShare = shares.reduce((s,v)=>s+v,0);
+    const priceText = totalUnits > 0
+      ? 'Cena na enoto: ' + fmtEUR(pricePerUnit) + '  ·  skupaj ' + fmtNum(totalUnits) + ' enot (' + sumPeople + ' oseb + ' + sumDogs + ' ps' + (sumDogs===1?'a':'ov') + ' × 0,5)'
+      : 'Vnesi vsaj eno osebo, da se izračuna cena na enoto.';
+
+    document.getElementById('sumPeople').textContent = sumPeople;
+    document.getElementById('sumDogs').textContent = sumDogs;
+    document.getElementById('sumUnits').textContent = fmtNum(totalUnits);
+    document.getElementById('sumShare').textContent = fmtEUR(totalShare);
+    document.getElementById('priceLine').textContent = priceText;
+
+    document.getElementById('mSumPeopleDogs').textContent = sumPeople + ' oseb, ' + sumDogs + ' ps' + (sumDogs===1?'a':'ov');
+    document.getElementById('mSumUnits').textContent = fmtNum(totalUnits);
+    document.getElementById('mSumShare').textContent = fmtEUR(totalShare);
+    document.getElementById('mPriceLine').textContent = priceText;
+  }
+
+  totalCostEl.addEventListener('input', () => { state.totalCost = totalCostEl.value === '' ? 0 : Number(totalCostEl.value); render(); });
+
+  render();
+
+  function buildDiscordText() {
+    const { units, totalUnits, pricePerUnit, shares } = computeShares();
+    const labelWidth = Math.max(...state.apartments.map(a => a.label.length), 10);
+    const lines = [];
+    lines.push('🧹 Delitev stroškov čiščenja ' + (state.periodLabel || ''));
+    lines.push('Skupaj: ' + fmtEUR(Number(state.totalCost)||0) + '  ·  ' + fmtNum(totalUnits) + ' enot  ·  ' + fmtEUR(pricePerUnit) + '/enoto');
+    lines.push('');
+    state.apartments.forEach((apt, i) => {
+      const who = (Number(apt.people)||0) + ' os' + ((Number(apt.dogs)||0) > 0 ? ' + ' + apt.dogs + ' ps' + (Number(apt.dogs)===1?'a':'ov') : '');
+      lines.push(
+        apt.label.padEnd(labelWidth + 2, ' ') +
+        who.padEnd(16, ' ') +
+        fmtEUR(shares[i]).padStart(10, ' ')
+      );
+    });
+    lines.push('');
+    lines.push('Skupaj'.padEnd(labelWidth + 18, ' ') + fmtEUR(shares.reduce((s,v)=>s+v,0)).padStart(10, ' '));
+    return '```\n' + lines.join('\n') + '\n```';
+  }
+
+  document.getElementById('copyBtn').addEventListener('click', async () => {
+    const text = buildDiscordText();
+    const previewPanel = document.getElementById('previewPanel');
+    const previewText = document.getElementById('previewText');
+    previewText.value = text;
+    previewPanel.style.display = 'block';
+    try {
+      await navigator.clipboard.writeText(text);
+      statusEl.textContent = 'Kopirano v odložišče — prilepi v Discord.';
+      statusEl.className = 'status ok';
+    } catch (e) {
+      previewText.select();
+      statusEl.textContent = 'Samodejno kopiranje ni uspelo — besedilo spodaj izberi in kopiraj ročno (Ctrl+C).';
+      statusEl.className = 'status err';
+    }
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', () => {
+    stateEl.textContent = JSON.stringify(state);
+    const newHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    try {
+      const blob = new Blob([newHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'delitev-ciscenja.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      statusEl.textContent = 'Datoteka prenesena — naslednjič izhajaj iz te.';
+      statusEl.className = 'status ok';
+    } catch (e) {
+      statusEl.textContent = 'Prenos ni uspel v tem brskalniku.';
+      statusEl.className = 'status err';
+    }
+  });
+
+  // ===================== EVIDENCA PLAČIL =====================
+  const FIREBASE_CONFIG = {
+    // <-- SEM prilepi svoj firebaseConfig iz Firebase konzole (Project settings -> Web app) -->
+    apiKey: "FIREBASE_CONFIG_PLACEHOLDER",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: ""
+  };
+
+  // PIN-i se od zdaj preverjajo na strani baze (Firestore Security Rules), ne v tem JS-ju —
+  // glej navodila v komentarju zgoraj za nastavitev zbirke "pins" in pravil.
+  async function sha256Hex(text) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  const payBannerEl = document.getElementById('payBanner');
+  const payRowsEl = document.getElementById('payRows');
+  const collectorBtn = document.getElementById('collectorBtn');
+  const periodSelectEl = document.getElementById('periodSelect');
+  const periodNoteEl = document.getElementById('periodNote');
+
+  const monthNames = ['januar','februar','marec','april','maj','junij','julij','avgust','september','oktober','november','december'];
+
+  // Obračunsko obdobje se izračuna samo iz koledarja, brez potrebe po ročnem "odpiranju" —
+  // okoli 10. v mesecu se privzeto obdobje samodejno premakne na naslednji mesec (ker do
+  // takrat večina še plačuje za prejšnji mesec, saj račun prispe šele okrog 15.).
+  // Spustni seznam poleg tega vedno ponuja tudi zadnjih nekaj mesecev nazaj, da lahko
+  // kdorkoli — brez PIN-a nabiralca — vnese zamudno plačilo za star, že "zaprt" mesec.
+  function periodFromOffset(monthsBack) {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - monthsBack);
+    return {
+      key: d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'),
+      label: monthNames[d.getMonth()] + ' ' + d.getFullYear()
+    };
+  }
+  function autoCurrentOffset() {
+    // Do 9. v mesecu velja, da se še vedno plačuje za mesec izpred dveh mesecev;
+    // od 10. dalje se privzeto obdobje premakne za en mesec naprej.
+    return new Date().getDate() < 10 ? 2 : 1;
+  }
+  const AUTO_OFFSET = autoCurrentOffset();
+  const RECENT_PERIODS = [1, 2, 3, 4].map(periodFromOffset); // najnovejše najprej
+  let periodKey = RECENT_PERIODS[AUTO_OFFSET - 1].key;
+
+  RECENT_PERIODS.forEach((p, idx) => {
+    const opt = document.createElement('option');
+    opt.value = p.key;
+    opt.textContent = p.label + (idx === AUTO_OFFSET - 1 ? ' (tekoče)' : '');
+    periodSelectEl.appendChild(opt);
+  });
+  periodSelectEl.value = periodKey;
+
+  function updatePeriodNote() {
+    periodNoteEl.classList.toggle('show', periodSelectEl.value !== RECENT_PERIODS[AUTO_OFFSET - 1].key);
+  }
+  updatePeriodNote();
+
+  periodSelectEl.addEventListener('change', () => {
+    periodKey = periodSelectEl.value;
+    updatePeriodNote();
+    if (db) subscribeToPayments();
+  });
+
+  let isCollector = false;
+  let collectorPin = '';
+  let paymentDocs = {}; // apartment index -> {claimed, confirmed}
+  let db = null;
+  let paymentsUnsub = null;
+
+  collectorBtn.addEventListener('click', () => {
+    if (isCollector) {
+      isCollector = false; collectorPin = '';
+      collectorBtn.classList.remove('active'); collectorBtn.textContent = 'Odkleni za prejemnika plačil';
+      renderPayRows();
+      return;
+    }
+    const pin = window.prompt('Vnesi PIN prejemnika plačil:');
+    if (pin === null) return;
+    isCollector = true;
+    collectorPin = pin;
+    collectorBtn.classList.add('active');
+    collectorBtn.textContent = 'Zakleni (prejemnik plačil)';
+    renderPayRows();
+  });
+
+  function renderPayRows() {
+    payRowsEl.innerHTML = '';
+    state.apartments.forEach((apt, i) => {
+      const rec = paymentDocs[i] || { claimed: false, confirmed: false };
+      const row = document.createElement('div');
+      row.className = 'pay-row';
+
+      const name = document.createElement('span');
+      name.className = 'pay-name';
+      name.textContent = apt.label;
+
+      const right = document.createElement('div');
+      right.className = 'pay-right';
+
+      const chip = document.createElement('span');
+      chip.className = 'chip ' + (rec.confirmed ? 'confirmed' : rec.claimed ? 'claimed' : 'unpaid');
+      chip.textContent = rec.confirmed ? 'Potrjeno ✓' : rec.claimed ? 'Čaka potrditev' : 'Ni plačano';
+      right.appendChild(chip);
+
+      if (!rec.claimed) {
+        const btn = document.createElement('button');
+        btn.className = 'pay-btn';
+        btn.textContent = 'Označi kot plačano';
+        btn.disabled = !db;
+        btn.addEventListener('click', () => markClaimed(i));
+        right.appendChild(btn);
+      } else if (rec.claimed && !rec.confirmed && isCollector) {
+        const btn = document.createElement('button');
+        btn.className = 'pay-btn confirm';
+        btn.textContent = 'Potrdi prejeto';
+        btn.addEventListener('click', () => markConfirmed(i));
+        right.appendChild(btn);
+      }
+
+      row.appendChild(name);
+      row.appendChild(right);
+      payRowsEl.appendChild(row);
+    });
+  }
+
+  async function markClaimed(i) {
+    const pin = window.prompt('Vnesi PIN za ' + state.apartments[i].label + ':');
+    if (pin === null) return;
+    const hash = await sha256Hex(pin);
+    const ref = db.collection('payments').doc(periodKey + '_' + i);
+    try {
+      await ref.set({
+        claimed: true, claimedAt: firebase.firestore.FieldValue.serverTimestamp(), confirmed: false, verifyHash: hash
+      }, { merge: true });
+      // takoj po uspešnem preverjanju hash odstranimo, da ni trajno viden v bazi
+      await ref.update({ verifyHash: firebase.firestore.FieldValue.delete() });
+    } catch (err) {
+      if (err.code === 'permission-denied') alert('Napačen PIN.');
+      else alert('Napaka pri shranjevanju: ' + err.message);
+    }
+  }
+
+  async function markConfirmed(i) {
+    if (!collectorPin) { alert('Najprej se odkleni kot prejemnik plačil.'); return; }
+    const hash = await sha256Hex(collectorPin);
+    const ref = db.collection('payments').doc(periodKey + '_' + i);
+    try {
+      await ref.set({
+        confirmed: true, confirmedAt: firebase.firestore.FieldValue.serverTimestamp(), verifyHash: hash
+      }, { merge: true });
+      await ref.update({ verifyHash: firebase.firestore.FieldValue.delete() });
+    } catch (err) {
+      if (err.code === 'permission-denied') alert('Napačen PIN prejemnika plačil.');
+      else alert('Napaka pri shranjevanju: ' + err.message);
+    }
+  }
+
+  function subscribeToPayments() {
+    if (paymentsUnsub) paymentsUnsub();
+    paymentsUnsub = db.collection('payments').onSnapshot(snap => {
+      paymentDocs = {};
+      snap.forEach(doc => {
+        if (doc.id.indexOf(periodKey + '_') === 0) {
+          const i = Number(doc.id.split('_')[1]);
+          paymentDocs[i] = doc.data();
+        }
+      });
+      renderPayRows();
+    }, err => {
+      payBannerEl.style.display = 'block';
+      payBannerEl.textContent = 'Napaka pri povezavi s shrambo: ' + err.message;
+    });
+  }
+
+  (function initPayments() {
+    if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === 'FIREBASE_CONFIG_PLACEHOLDER') {
+      payBannerEl.style.display = 'block';
+      payBannerEl.textContent = 'Evidenca plačil še ni povezana s shrambo (Firebase). Glej navodila v komentarju v kodi te datoteke, da jo enkratno nastaviš — do takrat ta razdelek prikazuje samo lokalno, prazno stanje.';
+      renderPayRows();
+      return;
+    }
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.firestore();
+      subscribeToPayments();
+    } catch (e) {
+      payBannerEl.style.display = 'block';
+      payBannerEl.textContent = 'Napaka pri zagonu evidence plačil: ' + e.message;
+      renderPayRows();
+    }
+  })();
+})();
+</script>
+</body>
+</html>
