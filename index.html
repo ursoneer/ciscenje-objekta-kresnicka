@@ -936,8 +936,6 @@
       await ref.set({
         claimed: true, claimedAt: firebase.firestore.FieldValue.serverTimestamp(), verifyHash: hash
       }, { merge: true });
-      // takoj po uspešnem preverjanju hash odstranimo, da ni trajno viden v bazi
-      await ref.update({ verifyHash: firebase.firestore.FieldValue.delete() });
     } catch (err) {
       if (err.code === 'permission-denied') alert('Napačen PIN.');
       else alert('Napaka pri shranjevanju: ' + err.message);
@@ -952,7 +950,6 @@
       await ref.set({
         confirmed: true, confirmedAt: firebase.firestore.FieldValue.serverTimestamp(), verifyHash: hash
       }, { merge: true });
-      await ref.update({ verifyHash: firebase.firestore.FieldValue.delete() });
     } catch (err) {
       if (err.code === 'permission-denied') alert('Napačen PIN prejemnika plačil.');
       else alert('Napaka pri shranjevanju: ' + err.message);
