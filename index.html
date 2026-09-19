@@ -413,7 +413,31 @@
     cursor: pointer;
   }
   button.pay-btn.confirm { background: var(--rust); }
+  button.pay-btn.undo { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); }
+  button.pay-btn.undo:hover { border-color: var(--rust); color: var(--rust); }
   button.pay-btn:disabled { opacity: 0.4; cursor: default; }
+
+  .pay-amount { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--ink-soft); min-width: 58px; text-align: right; }
+
+  .pay-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 0 22px 12px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .pay-toolbar input[type="month"] {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    background: var(--paper-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 5px 8px;
+  }
+  .pay-toolbar input[type="month"]:focus { outline: none; border-color: var(--teal); }
 </style>
 </head>
 <body>
@@ -477,6 +501,10 @@
       <button class="collector-toggle" id="collectorBtn">Odkleni za prejemnika plačil</button>
     </div>
     <p class="period-note" id="periodNote">To ni tekoče obdobje — uredi ga, če kdo plačuje z zamudo.</p>
+    <div class="pay-toolbar">
+      <label>Poljuben mesec (tudi starejši): <input type="month" id="periodCustom"></label>
+      <button class="collector-toggle" id="exportBtn">Izvozi evidenco (CSV)</button>
+    </div>
     <div class="pay-banner" id="payBanner" style="display:none;"></div>
     <div class="pay-rows" id="payRows"></div>
   </div>
@@ -511,8 +539,12 @@
   4. V Firestore -> Rules prilepi TOLE (PIN-e preveri baza sama, ne stran).
      Obračunsko obdobje se izračuna samodejno iz koledarja (okoli 10. v mesecu se
      privzeto obdobje samo premakne na naslednji mesec) — ni ga treba ročno "odpirati".
-     Spustni seznam na strani vedno ponuja tudi zadnje 3-4 mesece nazaj, tako da lahko
-     kdorkoli vnese zamudno plačilo za star, že "zaprt" mesec, brez posebnega dovoljenja:
+     Spustni seznam na strani vedno ponuja tudi zadnje 3-4 mesece nazaj, poleg tega pa
+     je mogoče izbrati tudi katerikoli starejši mesec ročno (npr. za pregled ali izvoz
+     zgodovine), tako da lahko kdorkoli vnese zamudno plačilo za star, že "zaprt" mesec,
+     brez posebnega dovoljenja. Nabiralec (prejemnik plačil) s svojim PIN-om lahko poleg
+     potrjevanja tudi neposredno označi stanovanje kot plačano+potrjeno, ali status
+     popravi nazaj na "ni plačano", če se zmoti:
 
        rules_version = '2';
        service cloud.firestore {
@@ -523,34 +555,30 @@
              allow read, write: if false;
            }
 
-           // Status plačil je javno berljiv, pisanje pa dovoljeno samo, če poslani
-           // "verifyHash" ustreza hashu, shranjenemu v /pins/{apartmentIndex} (za prijavo
-           // "plačano") oz. /pins/collector (za "potrjeno").
+           // Status plačil (vključno z zamrznjenim zneskom) je javno berljiv (tudi za
+           // izvoz evidence), pisanje pa dovoljeno samo, če poslani "verifyHash" ustreza
+           // hashu, shranjenemu v /pins/{apartmentIndex} (stanovanje prijavi svoje
+           // plačilo) oz. /pins/collector (nabiralec potrdi, neposredno zabeleži, ali
+           // prekliče status — karkoli od tega, dokler je PIN pravilen).
            match /payments/{docId} {
              allow read: if true;
              allow write: if
+               request.resource.data.verifyHash is string &&
                (
-                 request.resource.data.verifyHash is string &&
-                 (
-                   ( !('confirmed' in request.resource.data) &&
-                     request.resource.data.verifyHash ==
-                       get(/databases/$(database)/documents/pins/$(docId.split('_')[1])).data.hash )
-                   ||
-                   ( request.resource.data.confirmed == true &&
-                     request.resource.data.verifyHash ==
-                       get(/databases/$(database)/documents/pins/collector).data.hash )
-                 )
-               )
-               ||
-               // kdor koli sme takoj po zapisu odstraniti verifyHash iz dokumenta —
-               // to samo skrajša čas, ko je hash sploh viden, ne razkrije ničesar novega.
-               (
-                 !('verifyHash' in request.resource.data) &&
-                 request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verifyHash'])
+                 ( !('confirmed' in request.resource.data) &&
+                   request.resource.data.verifyHash ==
+                     get(/databases/$(database)/documents/pins/$(docId.split('_')[1])).data.hash )
+                 ||
+                 request.resource.data.verifyHash ==
+                   get(/databases/$(database)/documents/pins/collector).data.hash
                );
            }
          }
        }
+
+     Če si prej že objavil starejšo različico teh pravil, jih moraš ponovno prilepiti in
+     kliknuti Publish — brez tega gumba za "Prekliči" in "Zabeleži plačano + potrjeno"
+     ne bosta delovala.
 
   5. Izberi PIN kodo za vsako stanovanje (0-7) in za prejemnika plačil — priporočam daljšo,
      ne zgolj 4 številke (npr. "hisa-marec-17"), ker je krajše kode lažje uganiti iz hasha.
@@ -820,6 +848,8 @@
   const collectorBtn = document.getElementById('collectorBtn');
   const periodSelectEl = document.getElementById('periodSelect');
   const periodNoteEl = document.getElementById('periodNote');
+  const periodCustomEl = document.getElementById('periodCustom');
+  const exportBtnEl = document.getElementById('exportBtn');
 
   const monthNames = ['januar','februar','marec','april','maj','junij','julij','avgust','september','oktober','november','december'];
 
@@ -853,14 +883,27 @@
     periodSelectEl.appendChild(opt);
   });
   periodSelectEl.value = periodKey;
+  periodCustomEl.value = periodKey;
 
   function updatePeriodNote() {
-    periodNoteEl.classList.toggle('show', periodSelectEl.value !== RECENT_PERIODS[AUTO_OFFSET - 1].key);
+    periodNoteEl.classList.toggle('show', periodKey !== RECENT_PERIODS[AUTO_OFFSET - 1].key);
   }
   updatePeriodNote();
 
   periodSelectEl.addEventListener('change', () => {
     periodKey = periodSelectEl.value;
+    periodCustomEl.value = periodKey;
+    updatePeriodNote();
+    if (db) subscribeToPayments();
+  });
+
+  // Poljuben mesec (tudi tak, ki ga ni v spustnem seznamu) — omogoča pregled poljubno
+  // daleč nazaj, npr. dve leti, brez omejitve na zadnje 3-4 mesece.
+  periodCustomEl.addEventListener('change', () => {
+    if (!periodCustomEl.value) return;
+    periodKey = periodCustomEl.value;
+    const matchIdx = RECENT_PERIODS.findIndex(p => p.key === periodKey);
+    periodSelectEl.selectedIndex = matchIdx >= 0 ? matchIdx : -1;
     updatePeriodNote();
     if (db) subscribeToPayments();
   });
@@ -889,8 +932,10 @@
 
   function renderPayRows() {
     payRowsEl.innerHTML = '';
+    const { shares } = computeShares();
     state.apartments.forEach((apt, i) => {
       const rec = paymentDocs[i] || { claimed: false, confirmed: false };
+      const amount = (typeof rec.amount === 'number') ? rec.amount : shares[i];
       const row = document.createElement('div');
       row.className = 'pay-row';
 
@@ -900,6 +945,11 @@
 
       const right = document.createElement('div');
       right.className = 'pay-right';
+
+      const amountEl = document.createElement('span');
+      amountEl.className = 'pay-amount';
+      amountEl.textContent = (rec.claimed ? '' : '~') + fmtEUR(amount);
+      right.appendChild(amountEl);
 
       const chip = document.createElement('span');
       chip.className = 'chip ' + (rec.confirmed ? 'confirmed' : rec.claimed ? 'claimed' : 'unpaid');
@@ -913,12 +963,28 @@
         btn.disabled = !db;
         btn.addEventListener('click', () => markClaimed(i));
         right.appendChild(btn);
+
+        if (isCollector) {
+          const cbtn = document.createElement('button');
+          cbtn.className = 'pay-btn confirm';
+          cbtn.textContent = 'Zabeleži plačano + potrjeno';
+          cbtn.addEventListener('click', () => markCollectorDirect(i));
+          right.appendChild(cbtn);
+        }
       } else if (rec.claimed && !rec.confirmed && isCollector) {
         const btn = document.createElement('button');
         btn.className = 'pay-btn confirm';
         btn.textContent = 'Potrdi prejeto';
         btn.addEventListener('click', () => markConfirmed(i));
         right.appendChild(btn);
+      }
+
+      if (isCollector && (rec.claimed || rec.confirmed)) {
+        const ubtn = document.createElement('button');
+        ubtn.className = 'pay-btn undo';
+        ubtn.textContent = 'Prekliči';
+        ubtn.addEventListener('click', () => markReset(i));
+        right.appendChild(ubtn);
       }
 
       row.appendChild(name);
@@ -931,10 +997,12 @@
     const pin = window.prompt('Vnesi PIN za ' + state.apartments[i].label + ':');
     if (pin === null) return;
     const hash = await sha256Hex(pin);
+    const { shares } = computeShares();
     const ref = db.collection('payments').doc(periodKey + '_' + i);
     try {
       await ref.set({
-        claimed: true, claimedAt: firebase.firestore.FieldValue.serverTimestamp(), verifyHash: hash
+        claimed: true, claimedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        amount: shares[i], verifyHash: hash
       }, { merge: true });
     } catch (err) {
       if (err.code === 'permission-denied') alert('Napačen PIN.');
@@ -950,6 +1018,42 @@
       await ref.set({
         confirmed: true, confirmedAt: firebase.firestore.FieldValue.serverTimestamp(), verifyHash: hash
       }, { merge: true });
+    } catch (err) {
+      if (err.code === 'permission-denied') alert('Napačen PIN prejemnika plačil.');
+      else alert('Napaka pri shranjevanju: ' + err.message);
+    }
+  }
+
+  // Nabiralec lahko stanovanje označi kot plačano IN potrjeno v enem koraku, samo s
+  // svojim lastnim PIN-om — za primere, ko stanovalec sam ni kliknil "plačano",
+  // pa nabiralec ve, da je denar prispel (npr. nakazilo je vidno na računu).
+  async function markCollectorDirect(i) {
+    if (!collectorPin) { alert('Najprej se odkleni kot prejemnik plačil.'); return; }
+    const hash = await sha256Hex(collectorPin);
+    const { shares } = computeShares();
+    const ref = db.collection('payments').doc(periodKey + '_' + i);
+    try {
+      await ref.set({
+        claimed: true, claimedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        confirmed: true, confirmedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        amount: shares[i], verifyHash: hash
+      }, { merge: true });
+    } catch (err) {
+      if (err.code === 'permission-denied') alert('Napačen PIN prejemnika plačil.');
+      else alert('Napaka pri shranjevanju: ' + err.message);
+    }
+  }
+
+  // Če se nabiralec zmoti (klikne pri napačnem stanovanju), lahko status povrne nazaj
+  // na "Ni plačano" — to v celoti prepiše zapis (tudi zamrznjen znesek in datume), saj
+  // gre za popravek napake, ne za novo plačilo.
+  async function markReset(i) {
+    if (!collectorPin) { alert('Najprej se odkleni kot prejemnik plačil.'); return; }
+    if (!window.confirm('Res prekličeš status plačila za ' + state.apartments[i].label + ' (obdobje ' + periodKey + ')?')) return;
+    const hash = await sha256Hex(collectorPin);
+    const ref = db.collection('payments').doc(periodKey + '_' + i);
+    try {
+      await ref.set({ claimed: false, confirmed: false, verifyHash: hash });
     } catch (err) {
       if (err.code === 'permission-denied') alert('Napačen PIN prejemnika plačil.');
       else alert('Napaka pri shranjevanju: ' + err.message);
@@ -972,6 +1076,55 @@
       payBannerEl.textContent = 'Napaka pri povezavi s shrambo: ' + err.message;
     });
   }
+
+  // Izvoz celotne evidence (vsa obdobja, vsa stanovanja) v CSV — bere neposredno iz baze,
+  // ne glede na to, kateri mesec je trenutno izbran zgoraj na strani.
+  exportBtnEl.addEventListener('click', async () => {
+    if (!db) { alert('Evidenca plačil ni povezana s shrambo.'); return; }
+    exportBtnEl.disabled = true;
+    const prevText = exportBtnEl.textContent;
+    exportBtnEl.textContent = 'Izvažam…';
+    try {
+      const snap = await db.collection('payments').get();
+      const rows = [];
+      snap.forEach(doc => {
+        const d = doc.data();
+        const sep = doc.id.indexOf('_');
+        const period = doc.id.slice(0, sep);
+        const idx = Number(doc.id.slice(sep + 1));
+        const label = (state.apartments[idx] && state.apartments[idx].label) || ('Stanovanje ' + (idx + 1));
+        const toDateStr = (ts) => (ts && typeof ts.toDate === 'function') ? ts.toDate().toLocaleString('sl-SI') : '';
+        rows.push({
+          period, label,
+          amount: (typeof d.amount === 'number') ? d.amount.toFixed(2) : '',
+          claimed: d.claimed ? 'DA' : 'NE',
+          claimedAt: toDateStr(d.claimedAt),
+          confirmed: d.confirmed ? 'DA' : 'NE',
+          confirmedAt: toDateStr(d.confirmedAt)
+        });
+      });
+      rows.sort((a, b) => a.period === b.period ? a.label.localeCompare(b.label, 'sl') : a.period.localeCompare(b.period));
+      const header = ['Obdobje', 'Stanovanje', 'Znesek (EUR)', 'Plačano', 'Datum prijave', 'Potrjeno', 'Datum potrditve'];
+      const esc = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+      const lines = [header.map(esc).join(';')];
+      rows.forEach(r => lines.push([r.period, r.label, r.amount, r.claimed, r.claimedAt, r.confirmed, r.confirmedAt].map(esc).join(';')));
+      const csv = '﻿' + lines.join('\r\n'); // BOM, da Excel pravilno prikaže šumnike
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'evidenca-placil.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Izvoz ni uspel: ' + e.message);
+    } finally {
+      exportBtnEl.disabled = false;
+      exportBtnEl.textContent = prevText;
+    }
+  });
 
   (function initPayments() {
     if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === 'FIREBASE_CONFIG_PLACEHOLDER') {
