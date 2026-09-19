@@ -1045,15 +1045,35 @@
   }
 
   // Če se nabiralec zmoti (klikne pri napačnem stanovanju), lahko status povrne nazaj
-  // na "Ni plačano" — to v celoti prepiše zapis (tudi zamrznjen znesek in datume), saj
-  // gre za popravek napake, ne za novo plačilo.
+  // na "Ni plačano". Prejšnje stanje (kaj je bilo prej, kolikšen je bil zamrznjen
+  // znesek, kdaj se je to zgodilo) se ne izbriše, ampak zabeleži v "history" polje
+  // tega dokumenta — tako izvoz (CSV) lahko pokaže, da je bil zapis popravljen, in kaj
+  // je bilo pred popravkom. "claimed"/"confirmed"/"amount"/datumi se v celoti odstranijo
+  // (ne samo postavijo na false) — če bi ostali kot polja z vrednostjo false, bi to
+  // kasneje blokiralo, da bi stanovanje za isto obdobje spet lahko kliknilo "plačano".
   async function markReset(i) {
     if (!collectorPin) { alert('Najprej se odkleni kot prejemnik plačil.'); return; }
+    const rec = paymentDocs[i] || {};
+    if (!rec.claimed && !rec.confirmed) { alert('Za to stanovanje in obdobje trenutno ni ničesar za preklicati.'); return; }
     if (!window.confirm('Res prekličeš status plačila za ' + state.apartments[i].label + ' (obdobje ' + periodKey + ')?')) return;
     const hash = await sha256Hex(collectorPin);
     const ref = db.collection('payments').doc(periodKey + '_' + i);
+    const histEntry = {
+      at: new Date().toISOString(),
+      prevClaimed: !!rec.claimed,
+      prevConfirmed: !!rec.confirmed,
+      prevAmount: (typeof rec.amount === 'number') ? rec.amount : null
+    };
     try {
-      await ref.set({ claimed: false, confirmed: false, verifyHash: hash });
+      await ref.set({
+        claimed: firebase.firestore.FieldValue.delete(),
+        confirmed: firebase.firestore.FieldValue.delete(),
+        amount: firebase.firestore.FieldValue.delete(),
+        claimedAt: firebase.firestore.FieldValue.delete(),
+        confirmedAt: firebase.firestore.FieldValue.delete(),
+        verifyHash: hash,
+        history: firebase.firestore.FieldValue.arrayUnion(histEntry)
+      }, { merge: true });
     } catch (err) {
       if (err.code === 'permission-denied') alert('Napačen PIN prejemnika plačil.');
       else alert('Napaka pri shranjevanju: ' + err.message);
@@ -1094,20 +1114,29 @@
         const idx = Number(doc.id.slice(sep + 1));
         const label = (state.apartments[idx] && state.apartments[idx].label) || ('Stanovanje ' + (idx + 1));
         const toDateStr = (ts) => (ts && typeof ts.toDate === 'function') ? ts.toDate().toLocaleString('sl-SI') : '';
+        const history = Array.isArray(d.history) ? d.history : [];
+        const historyText = history.map(h => {
+          const stanje = h.prevConfirmed ? 'potrjeno' : h.prevClaimed ? 'čaka potrditev' : 'ni plačano';
+          const znesek = (typeof h.prevAmount === 'number') ? h.prevAmount.toFixed(2) + ' €' : '—';
+          const datum = h.at ? new Date(h.at).toLocaleString('sl-SI') : '';
+          return 'preklicano ' + datum + ' (prej: ' + stanje + ', znesek ' + znesek + ')';
+        }).join(' | ');
         rows.push({
           period, label,
           amount: (typeof d.amount === 'number') ? d.amount.toFixed(2) : '',
           claimed: d.claimed ? 'DA' : 'NE',
           claimedAt: toDateStr(d.claimedAt),
           confirmed: d.confirmed ? 'DA' : 'NE',
-          confirmedAt: toDateStr(d.confirmedAt)
+          confirmedAt: toDateStr(d.confirmedAt),
+          resetCount: history.length,
+          historyText
         });
       });
       rows.sort((a, b) => a.period === b.period ? a.label.localeCompare(b.label, 'sl') : a.period.localeCompare(b.period));
-      const header = ['Obdobje', 'Stanovanje', 'Znesek (EUR)', 'Plačano', 'Datum prijave', 'Potrjeno', 'Datum potrditve'];
+      const header = ['Obdobje', 'Stanovanje', 'Znesek (EUR)', 'Plačano', 'Datum prijave', 'Potrjeno', 'Datum potrditve', 'Št. preklicev', 'Zgodovina preklicev'];
       const esc = (v) => '"' + String(v).replace(/"/g, '""') + '"';
       const lines = [header.map(esc).join(';')];
-      rows.forEach(r => lines.push([r.period, r.label, r.amount, r.claimed, r.claimedAt, r.confirmed, r.confirmedAt].map(esc).join(';')));
+      rows.forEach(r => lines.push([r.period, r.label, r.amount, r.claimed, r.claimedAt, r.confirmed, r.confirmedAt, r.resetCount, r.historyText].map(esc).join(';')));
       const csv = '﻿' + lines.join('\r\n'); // BOM, da Excel pravilno prikaže šumnike
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
