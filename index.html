@@ -1002,7 +1002,10 @@
     try {
       await ref.set({
         claimed: true, claimedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        amount: shares[i], verifyHash: hash
+        amount: shares[i], verifyHash: hash,
+        // odstrani morebiten star "confirmed" zapis (npr. iz prejšnjega preklica) —
+        // pravilo za prijavo s kodo stanovanja zahteva, da tega polja sploh ni.
+        confirmed: firebase.firestore.FieldValue.delete()
       }, { merge: true });
     } catch (err) {
       if (err.code === 'permission-denied') alert('Napačen PIN.');
