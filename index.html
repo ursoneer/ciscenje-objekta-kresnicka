@@ -188,6 +188,10 @@
     min-width: 110px;
   }
   input.label-input:hover, input.label-input:focus { border-bottom-color: var(--line); outline: none; }
+  input.label-input:disabled, input.num-input:disabled, .cost-input-group input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
 
   input.num-input {
     font-family: 'IBM Plex Mono', monospace;
@@ -455,6 +459,7 @@
       <input type="number" id="totalCost" step="0.01" min="0" inputmode="decimal">
       <span class="cur">€</span>
     </div>
+    <button class="collector-toggle" id="calcLockBtn">Odkleni urejanje</button>
   </div>
 
   <div class="panel">
@@ -573,12 +578,32 @@
                    get(/databases/$(database)/documents/pins/collector).data.hash
                );
            }
+
+           // Uporablja se samo za PREVERJANJE, ali je vnesena koda pravilna, da se
+           // odklene urejanje zgornjega kalkulatorja (cena, osebe/psi, imena stanovanj).
+           // Dovoljena je koda stanovanja 1 (lastnik strani) ali koda nabiralca — če
+           // želiš, da lahko kalkulator ureja tudi nekdo drug (npr. stanovanje 3, ki
+           // plačuje račun), mu preprosto daš ISTO kodo kot nabiralcu; posebnega
+           // dokumenta za to ni treba dodajati. Ti preizkusni dokumenti se nikoli ne
+           // berejo nazaj, samo pišejo — zato ne razkrivajo ničesar.
+           match /calc_unlock/{docId} {
+             allow read: if false;
+             allow write: if
+               request.resource.data.verifyHash is string &&
+               (
+                 request.resource.data.verifyHash ==
+                   get(/databases/$(database)/documents/pins/0).data.hash
+                 ||
+                 request.resource.data.verifyHash ==
+                   get(/databases/$(database)/documents/pins/collector).data.hash
+               );
+           }
          }
        }
 
      Če si prej že objavil starejšo različico teh pravil, jih moraš ponovno prilepiti in
-     kliknuti Publish — brez tega gumba za "Prekliči" in "Zabeleži plačano + potrjeno"
-     ne bosta delovala.
+     kliknuti Publish — brez tega gumb "Odkleni urejanje" (zgornji kalkulator), "Prekliči"
+     in "Zabeleži plačano + potrjeno" ne bodo delovali.
 
   5. Izberi PIN kodo za vsako stanovanje (0-7) in za prejemnika plačil — priporočam daljšo,
      ne zgolj 4 številke (npr. "hisa-marec-17"), ker je krajše kode lažje uganiti iz hasha.
@@ -606,6 +631,11 @@
   try { state = JSON.parse(stateEl.textContent); }
   catch(e) { state = {totalCost:0, periodLabel:"za ta mesec", apartments:[]}; }
 
+  // Zaklep urejanja kalkulatorja (cena, osebe/psi, imena stanovanj) — odklene ga
+  // koda stanovanja 1 ali koda nabiralca (glej "EVIDENCA PLAČIL" nižje za preverjanje
+  // PIN-a prek Firestore pravil). Mora biti deklarirano pred prvim klicem render().
+  let isCalcUnlocked = false;
+
   const fmtEUR = (n) => n.toLocaleString('sl-SI', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
   const fmtNum = (n) => n.toLocaleString('sl-SI', {minimumFractionDigits:1, maximumFractionDigits:1});
 
@@ -616,6 +646,7 @@
   const statusEl = document.getElementById('status');
 
   totalCostEl.value = state.totalCost;
+  totalCostEl.disabled = !isCalcUnlocked;
   periodLabelEl.textContent = state.periodLabel || 'za ta mesec';
 
   function computeShares() {
@@ -648,6 +679,7 @@
       const labelInput = document.createElement('input');
       labelInput.className = 'label-input';
       labelInput.value = apt.label;
+      labelInput.disabled = !isCalcUnlocked;
       labelInput.addEventListener('input', () => { apt.label = labelInput.value; syncLabel(i, labelInput.value); });
       tdLabel.appendChild(labelInput);
 
@@ -658,6 +690,7 @@
       peopleInput.className = 'num-input';
       peopleInput.type = 'number'; peopleInput.min = '0'; peopleInput.step = '1';
       peopleInput.value = apt.people;
+      peopleInput.disabled = !isCalcUnlocked;
       peopleInput.addEventListener('input', () => { apt.people = peopleInput.value === '' ? 0 : Number(peopleInput.value); render(); });
       tdPeople.appendChild(peopleInput);
 
@@ -668,6 +701,7 @@
       dogsInput.className = 'num-input';
       dogsInput.type = 'number'; dogsInput.min = '0'; dogsInput.step = '1';
       dogsInput.value = apt.dogs;
+      dogsInput.disabled = !isCalcUnlocked;
       dogsInput.addEventListener('input', () => { apt.dogs = dogsInput.value === '' ? 0 : Number(dogsInput.value); render(); });
       tdDogs.appendChild(dogsInput);
 
@@ -693,6 +727,7 @@
       const cLabelInput = document.createElement('input');
       cLabelInput.className = 'label-input';
       cLabelInput.value = apt.label;
+      cLabelInput.disabled = !isCalcUnlocked;
       cLabelInput.addEventListener('input', () => { apt.label = cLabelInput.value; syncLabel(i, cLabelInput.value); });
       const cShare = document.createElement('span');
       cShare.className = 'share';
@@ -709,6 +744,7 @@
       cPeopleInput.className = 'num-input';
       cPeopleInput.type = 'number'; cPeopleInput.min = '0'; cPeopleInput.step = '1';
       cPeopleInput.value = apt.people;
+      cPeopleInput.disabled = !isCalcUnlocked;
       cPeopleInput.addEventListener('input', () => { apt.people = cPeopleInput.value === '' ? 0 : Number(cPeopleInput.value); render(); });
       fPeople.appendChild(document.createTextNode('Osebe '));
       fPeople.appendChild(cPeopleInput);
@@ -719,6 +755,7 @@
       cDogsInput.className = 'num-input';
       cDogsInput.type = 'number'; cDogsInput.min = '0'; cDogsInput.step = '1';
       cDogsInput.value = apt.dogs;
+      cDogsInput.disabled = !isCalcUnlocked;
       cDogsInput.addEventListener('input', () => { apt.dogs = cDogsInput.value === '' ? 0 : Number(cDogsInput.value); render(); });
       fDogs.appendChild(document.createTextNode('Psi '));
       fDogs.appendChild(cDogsInput);
@@ -1155,6 +1192,42 @@
     } finally {
       exportBtnEl.disabled = false;
       exportBtnEl.textContent = prevText;
+    }
+  });
+
+  // ===================== ZAKLEP KALKULATORJA =====================
+  // Zgornji kalkulator (cena, osebe/psi, imena stanovanj) je privzeto zaklenjen —
+  // ureja ga lahko samo, kdor pozna kodo stanovanja 1 ali kodo nabiralca (prejemnika
+  // plačil). Ker PIN hashev ni mogoče prebrati neposredno (glej pravila za "pins"), se
+  // pravilnost kode preveri tako, da se poskusi zapisati preizkusni dokument v zbirko
+  // "calc_unlock" — če Firestore zapis zavrne, je bil PIN napačen.
+  const calcLockBtn = document.getElementById('calcLockBtn');
+
+  function applyCalcLockUI() {
+    totalCostEl.disabled = !isCalcUnlocked;
+    calcLockBtn.textContent = isCalcUnlocked ? 'Zakleni urejanje' : 'Odkleni urejanje';
+    calcLockBtn.classList.toggle('active', isCalcUnlocked);
+  }
+
+  calcLockBtn.addEventListener('click', async () => {
+    if (isCalcUnlocked) {
+      isCalcUnlocked = false;
+      applyCalcLockUI();
+      render();
+      return;
+    }
+    if (!db) { alert('Zaklepanje trenutno ni na voljo, ker evidenca plačil (Firebase) ni povezana.'); return; }
+    const pin = window.prompt('Vnesi svojo kodo (stanovanje 1 ali koda nabiralca):');
+    if (pin === null) return;
+    const hash = await sha256Hex(pin);
+    try {
+      await db.collection('calc_unlock').doc(String(Date.now())).set({ verifyHash: hash });
+      isCalcUnlocked = true;
+      applyCalcLockUI();
+      render();
+    } catch (err) {
+      if (err.code === 'permission-denied') alert('Napačen PIN.');
+      else alert('Napaka pri preverjanju: ' + err.message);
     }
   });
 
