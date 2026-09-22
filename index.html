@@ -249,6 +249,7 @@
   }
   button.save:hover { background: var(--teal); }
   button.save:active { transform: translateY(1px); }
+  button.save:disabled { opacity: 0.4; cursor: not-allowed; }
   button.add {
     font-family: 'IBM Plex Sans', sans-serif;
     font-size: 13.5px;
@@ -598,6 +599,18 @@
                    get(/databases/$(database)/documents/pins/collector).data.hash
                );
            }
+
+           // Enako preverjanje, samo strožje — sprejme SAMO kodo stanovanja 1. Uporablja
+           // se za odklep gumba "Prenesi posodobljeno datoteko" (dejanski sistemski korak,
+           // s katerim nastane nova datoteka za GitHub) — tega namenoma ne sme odkleniti
+           // niti koda nabiralca.
+           match /owner_unlock/{docId} {
+             allow read: if false;
+             allow write: if
+               request.resource.data.verifyHash is string &&
+               request.resource.data.verifyHash ==
+                 get(/databases/$(database)/documents/pins/0).data.hash;
+           }
          }
        }
 
@@ -635,6 +648,9 @@
   // koda stanovanja 1 ali koda nabiralca (glej "EVIDENCA PLAČIL" nižje za preverjanje
   // PIN-a prek Firestore pravil). Mora biti deklarirano pred prvim klicem render().
   let isCalcUnlocked = false;
+  // "Prenesi posodobljeno datoteko" (dejanski sistemski korak — nova datoteka za GitHub)
+  // je ločeno zaklenjen in ga odklene SAMO koda stanovanja 1, ne tudi koda nabiralca.
+  let isOwnerUnlocked = false;
 
   const fmtEUR = (n) => n.toLocaleString('sl-SI', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
   const fmtNum = (n) => n.toLocaleString('sl-SI', {minimumFractionDigits:1, maximumFractionDigits:1});
@@ -648,6 +664,9 @@
   totalCostEl.value = state.totalCost;
   totalCostEl.disabled = !isCalcUnlocked;
   periodLabelEl.textContent = state.periodLabel || 'za ta mesec';
+
+  const downloadBtnEl = document.getElementById('downloadBtn');
+  downloadBtnEl.disabled = !isOwnerUnlocked;
 
   function computeShares() {
     const units = state.apartments.map(a => (Number(a.people)||0) + 0.5*(Number(a.dogs)||0));
@@ -841,7 +860,8 @@
     }
   });
 
-  document.getElementById('downloadBtn').addEventListener('click', () => {
+  downloadBtnEl.addEventListener('click', () => {
+    if (!isOwnerUnlocked) { alert('Ta gumb lahko uporabi samo stanovanje 1 (odkleni z njegovo kodo zgoraj).'); return; }
     stateEl.textContent = JSON.stringify(state);
     const newHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
     try {
@@ -1197,21 +1217,27 @@
 
   // ===================== ZAKLEP KALKULATORJA =====================
   // Zgornji kalkulator (cena, osebe/psi, imena stanovanj) je privzeto zaklenjen —
-  // ureja ga lahko samo, kdor pozna kodo stanovanja 1 ali kodo nabiralca (prejemnika
-  // plačil). Ker PIN hashev ni mogoče prebrati neposredno (glej pravila za "pins"), se
-  // pravilnost kode preveri tako, da se poskusi zapisati preizkusni dokument v zbirko
-  // "calc_unlock" — če Firestore zapis zavrne, je bil PIN napačen.
+  // ureja ga lahko, kdor pozna kodo stanovanja 1 ALI kodo nabiralca (prejemnika
+  // plačil). Gumb "Prenesi posodobljeno datoteko" (dejanski sistemski korak — s tem
+  // nastane nova datoteka za GitHub) pa je ločeno zaklenjen in ga odklene SAMO koda
+  // stanovanja 1. Ker PIN hashev ni mogoče prebrati neposredno (glej pravila za
+  // "pins"), se pravilnost kode preveri tako, da se poskusi zapisati preizkusni
+  // dokument v ustrezno zbirko — če Firestore zapis zavrne, je bil PIN napačen.
   const calcLockBtn = document.getElementById('calcLockBtn');
 
   function applyCalcLockUI() {
     totalCostEl.disabled = !isCalcUnlocked;
-    calcLockBtn.textContent = isCalcUnlocked ? 'Zakleni urejanje' : 'Odkleni urejanje';
+    downloadBtnEl.disabled = !isOwnerUnlocked;
+    calcLockBtn.textContent = isOwnerUnlocked ? 'Zakleni urejanje (stanovanje 1)'
+      : isCalcUnlocked ? 'Zakleni urejanje (nabiralec)'
+      : 'Odkleni urejanje';
     calcLockBtn.classList.toggle('active', isCalcUnlocked);
   }
 
   calcLockBtn.addEventListener('click', async () => {
     if (isCalcUnlocked) {
       isCalcUnlocked = false;
+      isOwnerUnlocked = false;
       applyCalcLockUI();
       render();
       return;
@@ -1220,9 +1246,22 @@
     const pin = window.prompt('Vnesi svojo kodo (stanovanje 1 ali koda nabiralca):');
     if (pin === null) return;
     const hash = await sha256Hex(pin);
+    // Najprej preveri, ali gre za kodo stanovanja 1 (edina, ki odklene tudi prenos
+    // datoteke) — če ne, preveri še, ali gre za kodo nabiralca (odklene samo urejanje).
+    try {
+      await db.collection('owner_unlock').doc(String(Date.now())).set({ verifyHash: hash });
+      isCalcUnlocked = true;
+      isOwnerUnlocked = true;
+      applyCalcLockUI();
+      render();
+      return;
+    } catch (err) {
+      if (err.code !== 'permission-denied') { alert('Napaka pri preverjanju: ' + err.message); return; }
+    }
     try {
       await db.collection('calc_unlock').doc(String(Date.now())).set({ verifyHash: hash });
       isCalcUnlocked = true;
+      isOwnerUnlocked = false;
       applyCalcLockUI();
       render();
     } catch (err) {
