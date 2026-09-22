@@ -1,12 +1,11 @@
 <!DOCTYPE html>
-<html lang="sl">
-<head>
+<html lang="sl"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Delitev stroškov čiščenja</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
 <style>
   :root {
     --paper: #EDEAE1;
@@ -460,7 +459,7 @@
       <input type="number" id="totalCost" step="0.01" min="0" inputmode="decimal">
       <span class="cur">€</span>
     </div>
-    <button class="collector-toggle" id="calcLockBtn">Odkleni urejanje</button>
+    <button class="collector-toggle active" id="calcLockBtn">Zakleni urejanje (stanovanje 1)</button>
   </div>
 
   <div class="panel">
@@ -475,27 +474,27 @@
             <th class="money">Plača</th>
           </tr>
         </thead>
-        <tbody id="rows"></tbody>
+        <tbody id="rows"><tr><td><input class="label-input"></td><td class="num" data-label="Osebe"><input class="num-input" type="number" min="0" step="1"></td><td class="num" data-label="Psi"><input class="num-input" type="number" min="0" step="1"></td><td class="num units" data-label="Enote">4,0</td><td class="money share" data-label="Plača">15,00 €</td></tr><tr><td><input class="label-input"></td><td class="num" data-label="Osebe"><input class="num-input" type="number" min="0" step="1"></td><td class="num" data-label="Psi"><input class="num-input" type="number" min="0" step="1"></td><td class="num units" data-label="Enote">2,0</td><td class="money share" data-label="Plača">7,50 €</td></tr><tr><td><input class="label-input"></td><td class="num" data-label="Osebe"><input class="num-input" type="number" min="0" step="1"></td><td class="num" data-label="Psi"><input class="num-input" type="number" min="0" step="1"></td><td class="num units" data-label="Enote">3,0</td><td class="money share" data-label="Plača">11,25 €</td></tr><tr><td><input class="label-input"></td><td class="num" data-label="Osebe"><input class="num-input" type="number" min="0" step="1"></td><td class="num" data-label="Psi"><input class="num-input" type="number" min="0" step="1"></td><td class="num units" data-label="Enote">4,0</td><td class="money share" data-label="Plača">15,00 €</td></tr><tr><td><input class="label-input"></td><td class="num" data-label="Osebe"><input class="num-input" type="number" min="0" step="1"></td><td class="num" data-label="Psi"><input class="num-input" type="number" min="0" step="1"></td><td class="num units" data-label="Enote">4,0</td><td class="money share" data-label="Plača">15,00 €</td></tr><tr><td><input class="label-input"></td><td class="num" data-label="Osebe"><input class="num-input" type="number" min="0" step="1"></td><td class="num" data-label="Psi"><input class="num-input" type="number" min="0" step="1"></td><td class="num units" data-label="Enote">1,0</td><td class="money share" data-label="Plača">3,75 €</td></tr><tr><td><input class="label-input"></td><td class="num" data-label="Osebe"><input class="num-input" type="number" min="0" step="1"></td><td class="num" data-label="Psi"><input class="num-input" type="number" min="0" step="1"></td><td class="num units" data-label="Enote">2,0</td><td class="money share" data-label="Plača">7,50 €</td></tr><tr><td><input class="label-input"></td><td class="num" data-label="Osebe"><input class="num-input" type="number" min="0" step="1"></td><td class="num" data-label="Psi"><input class="num-input" type="number" min="0" step="1"></td><td class="num units" data-label="Enote">4,0</td><td class="money share" data-label="Plača">15,00 €</td></tr></tbody>
         <tfoot>
           <tr>
             <td class="foot-label">Skupaj</td>
-            <td class="num foot-total" id="sumPeople"></td>
-            <td class="num foot-total" id="sumDogs"></td>
-            <td class="num foot-total" id="sumUnits"></td>
-            <td class="money foot-total" id="sumShare"></td>
+            <td class="num foot-total" id="sumPeople">23</td>
+            <td class="num foot-total" id="sumDogs">2</td>
+            <td class="num foot-total" id="sumUnits">24,0</td>
+            <td class="money foot-total" id="sumShare">90,00 €</td>
           </tr>
           <tr>
-            <td colspan="5" class="foot-label" id="priceLine"></td>
+            <td colspan="5" class="foot-label" id="priceLine">Cena na enoto: 3,75 €  ·  skupaj 24,0 enot (23 oseb + 2 psov × 0,5)</td>
           </tr>
         </tfoot>
       </table>
     </div>
-    <div class="cards" id="cards"></div>
+    <div class="cards" id="cards"><div class="card-row"><div class="card-top"><input class="label-input"><span class="share">15,00 €</span></div><div class="card-bottom"><label class="card-field">Osebe <input class="num-input" type="number" min="0" step="1"></label><label class="card-field">Psi <input class="num-input" type="number" min="0" step="1"></label><span class="card-units units">4,0 enot</span></div></div><div class="card-row"><div class="card-top"><input class="label-input"><span class="share">7,50 €</span></div><div class="card-bottom"><label class="card-field">Osebe <input class="num-input" type="number" min="0" step="1"></label><label class="card-field">Psi <input class="num-input" type="number" min="0" step="1"></label><span class="card-units units">2,0 enot</span></div></div><div class="card-row"><div class="card-top"><input class="label-input"><span class="share">11,25 €</span></div><div class="card-bottom"><label class="card-field">Osebe <input class="num-input" type="number" min="0" step="1"></label><label class="card-field">Psi <input class="num-input" type="number" min="0" step="1"></label><span class="card-units units">3,0 enot</span></div></div><div class="card-row"><div class="card-top"><input class="label-input"><span class="share">15,00 €</span></div><div class="card-bottom"><label class="card-field">Osebe <input class="num-input" type="number" min="0" step="1"></label><label class="card-field">Psi <input class="num-input" type="number" min="0" step="1"></label><span class="card-units units">4,0 enot</span></div></div><div class="card-row"><div class="card-top"><input class="label-input"><span class="share">15,00 €</span></div><div class="card-bottom"><label class="card-field">Osebe <input class="num-input" type="number" min="0" step="1"></label><label class="card-field">Psi <input class="num-input" type="number" min="0" step="1"></label><span class="card-units units">4,0 enot</span></div></div><div class="card-row"><div class="card-top"><input class="label-input"><span class="share">3,75 €</span></div><div class="card-bottom"><label class="card-field">Osebe <input class="num-input" type="number" min="0" step="1"></label><label class="card-field">Psi <input class="num-input" type="number" min="0" step="1"></label><span class="card-units units">1,0 enot</span></div></div><div class="card-row"><div class="card-top"><input class="label-input"><span class="share">7,50 €</span></div><div class="card-bottom"><label class="card-field">Osebe <input class="num-input" type="number" min="0" step="1"></label><label class="card-field">Psi <input class="num-input" type="number" min="0" step="1"></label><span class="card-units units">2,0 enot</span></div></div><div class="card-row"><div class="card-top"><input class="label-input"><span class="share">15,00 €</span></div><div class="card-bottom"><label class="card-field">Osebe <input class="num-input" type="number" min="0" step="1"></label><label class="card-field">Psi <input class="num-input" type="number" min="0" step="1"></label><span class="card-units units">4,0 enot</span></div></div></div>
     <div class="cards-summary" id="cardsSummary">
-      <div class="cs-row"><span>Skupaj oseb / psov</span><b id="mSumPeopleDogs"></b></div>
-      <div class="cs-row"><span>Skupaj enot</span><b id="mSumUnits"></b></div>
-      <div class="cs-row total"><span>Skupaj za plačilo</span><b id="mSumShare"></b></div>
-      <p class="cs-price" id="mPriceLine"></p>
+      <div class="cs-row"><span>Skupaj oseb / psov</span><b id="mSumPeopleDogs">23 oseb, 2 psov</b></div>
+      <div class="cs-row"><span>Skupaj enot</span><b id="mSumUnits">24,0</b></div>
+      <div class="cs-row total"><span>Skupaj za plačilo</span><b id="mSumShare">90,00 €</b></div>
+      <p class="cs-price" id="mPriceLine">Cena na enoto: 3,75 €  ·  skupaj 24,0 enot (23 oseb + 2 psov × 0,5)</p>
     </div>
     <div class="legend"><span><b>Enota</b> = osebe + 0,5 × psi</span><span><b>Plača</b> = enote stanovanja × cena na enoto</span></div>
   </div>
@@ -503,7 +502,7 @@
   <div class="panel pay-section">
     <div class="pay-header">
       <h2>Evidenca plačil</h2>
-      <select class="period-select" id="periodSelect"></select>
+      <select class="period-select" id="periodSelect"><option value="2026-08">avgust 2026 (tekoče)</option><option value="2026-07">julij 2026</option><option value="2026-06">junij 2026</option><option value="2026-05">maj 2026</option></select>
       <button class="collector-toggle" id="collectorBtn">Odkleni za prejemnika plačil</button>
     </div>
     <p class="period-note" id="periodNote">To ni tekoče obdobje — uredi ga, če kdo plačuje z zamudo.</p>
@@ -512,7 +511,7 @@
       <button class="collector-toggle" id="exportBtn">Izvozi evidenco (CSV)</button>
     </div>
     <div class="pay-banner" id="payBanner" style="display:none;"></div>
-    <div class="pay-rows" id="payRows"></div>
+    <div class="pay-rows" id="payRows"><div class="pay-row"><span class="pay-name">Stanovanje 1</span><div class="pay-right"><span class="pay-amount">~15,00 €</span><span class="chip unpaid">Ni plačano</span><button class="pay-btn">Označi kot plačano</button></div></div><div class="pay-row"><span class="pay-name">Stanovanje 2</span><div class="pay-right"><span class="pay-amount">~7,50 €</span><span class="chip unpaid">Ni plačano</span><button class="pay-btn">Označi kot plačano</button></div></div><div class="pay-row"><span class="pay-name">Stanovanje 3</span><div class="pay-right"><span class="pay-amount">~11,25 €</span><span class="chip unpaid">Ni plačano</span><button class="pay-btn">Označi kot plačano</button></div></div><div class="pay-row"><span class="pay-name">Stanovanje 4</span><div class="pay-right"><span class="pay-amount">15,00 €</span><span class="chip claimed">Čaka potrditev</span></div></div><div class="pay-row"><span class="pay-name">Stanovanje 5</span><div class="pay-right"><span class="pay-amount">15,00 €</span><span class="chip claimed">Čaka potrditev</span></div></div><div class="pay-row"><span class="pay-name">Stanovanje 6</span><div class="pay-right"><span class="pay-amount">~3,75 €</span><span class="chip unpaid">Ni plačano</span><button class="pay-btn">Označi kot plačano</button></div></div><div class="pay-row"><span class="pay-name">Stanovanje 7</span><div class="pay-right"><span class="pay-amount">7,50 €</span><span class="chip claimed">Čaka potrditev</span></div></div><div class="pay-row"><span class="pay-name">Stanovanje 8</span><div class="pay-right"><span class="pay-amount">~15,00 €</span><span class="chip unpaid">Ni plačano</span><button class="pay-btn">Označi kot plačano</button></div></div></div>
   </div>
 
   <div class="actions">
@@ -523,7 +522,7 @@
 
   <div class="panel" id="previewPanel" style="display:none; margin-top:14px; padding:16px 18px;">
     <p style="margin:0 0 8px; font-size:12.5px; color:var(--ink-soft);">Predogled besedila (kopirano v odložišče — če se kopiranje ni sprožilo samodejno, izberi in kopiraj ročno):</p>
-    <textarea id="previewText" readonly style="width:100%; min-height:220px; font-family:'IBM Plex Mono',monospace; font-size:13px; line-height:1.5; background:var(--paper-2); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:12px; resize:vertical;"></textarea>
+    <textarea id="previewText" readonly="" style="width:100%; min-height:220px; font-family:'IBM Plex Mono',monospace; font-size:13px; line-height:1.5; background:var(--paper-2); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:12px; resize:vertical;"></textarea>
   </div>
 
   <footer class="note">
@@ -532,7 +531,7 @@
 
 </div>
 
-<script id="app-state" type="application/json">{"totalCost":90,"periodLabel":"za ta mesec","apartments":[{"label":"Stanovanje 1","people":4,"dogs":0},{"label":"Stanovanje 2","people":2,"dogs":0},{"label":"Stanovanje 3","people":3,"dogs":0},{"label":"Stanovanje 4","people":4,"dogs":0},{"label":"Stanovanje 5","people":4,"dogs":0},{"label":"Stanovanje 6","people":1,"dogs":0},{"label":"Stanovanje 7","people":2,"dogs":0},{"label":"Stanovanje 8","people":4,"dogs":0}]}</script>
+<script id="app-state" type="application/json">{"totalCost":90,"periodLabel":"za ta mesec","apartments":[{"label":"Stanovanje 1","people":4,"dogs":0},{"label":"Stanovanje 2","people":2,"dogs":0},{"label":"Stanovanje 3","people":3,"dogs":0},{"label":"Stanovanje 4","people":4,"dogs":0},{"label":"Stanovanje 5","people":4,"dogs":0},{"label":"Stanovanje 6","people":1,"dogs":0},{"label":"Stanovanje 7","people":2,"dogs":0},{"label":"Stanovanje 8","people":3,"dogs":2}]}</script>
 
 <!--
   EVIDENCA PLAČIL — nastavitev (enkratno):
@@ -1289,5 +1288,6 @@
   })();
 })();
 </script>
-</body>
-</html>
+
+
+</body></html>
